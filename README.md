@@ -83,9 +83,9 @@ precalc-arena-shiny/
 
    ```r
    rsconnect::setAccountInfo(
-     name='your-username',
-     token='YOUR_TOKEN',
-     secret='YOUR_SECRET'
+     name = "your-username",
+     token = "YOUR_TOKEN",
+     secret = "YOUR_SECRET"
    )
    ```
 
@@ -95,7 +95,7 @@ precalc-arena-shiny/
    ```r
    rsconnect::deployApp(appDir = "/path/to/precalc-arena-shiny")
    ```
-5. Access your app at:
+5. **Access your app**:
 
    ```
    https://your-username.shinyapps.io/precalc-arena-shiny/
@@ -123,6 +123,5 @@ MIT License — free to use, modify, and share.
 
 ---
 
-If you want, I can also add a small auto-generated TOC block (with a script) or insert **screenshots** and a **Mermaid flow** section that the TOC links to.
-
+*Tip:* If a section still doesn’t jump, refresh the GitHub page (GitHub caches anchors), and make sure the TOC links exactly match the anchor IDs (they do here).
 
