@@ -1,4 +1,3 @@
-```R
 library(shiny)
 library(bslib)
 library(shinyWidgets)
@@ -153,15 +152,15 @@ make_systems_mission <- function(diff) {
   ask <- rchoice(c("x", "y"))
   if (diff == "Hard") ask <- rchoice(c("x", "y", "both"))
   if (ask == "x") {
-    prompt <- sprintf("Solve the system: %dx %s %dy = %d, %dx %s %dy = %d. Find x.", 
+    prompt <- sprintf("Solve the system: %dx %s %dy = %d, %dx %s %dy = %d. Find x.",
                       a, if (b >= 0) "+" else "-", abs(b), c, d, if (e >= 0) "+" else "-", abs(e), f)
     ans <- x_sol; type <- "numeric"
   } else if (ask == "y") {
-    prompt <- sprintf("Solve the system: %dx %s %dy = %d, %dx %s %dy = %d. Find y.", 
+    prompt <- sprintf("Solve the system: %dx %s %dy = %d, %dx %s %dy = %d. Find y.",
                       a, if (b >= 0) "+" else "-", abs(b), c, d, if (e >= 0) "+" else "-", abs(e), f)
     ans <- y_sol; type <- "numeric"
   } else {
-    prompt <- sprintf("Solve the system: %dx %s %dy = %d, %dx %s %dy = %d. Give (x,y) as 'x,y'.", 
+    prompt <- sprintf("Solve the system: %dx %s %dy = %d, %dx %s %dy = %d. Give (x,y) as 'x,y'.",
                       a, if (b >= 0) "+" else "-", abs(b), c, d, if (e >= 0) "+" else "-", abs(e), f)
     ans <- paste0(x_sol, ",", y_sol); type <- "text"
   }
@@ -186,9 +185,11 @@ make_seq_series_mission <- function(diff) {
   list(prompt = prompt, answer = as.numeric(round(ans, 6)), hint = hint, type = "numeric")
 }
 
+# ---------- FIXED: Limits mission ----------
 make_limits_mission <- function(diff) {
   mode <- rchoice(c("direct", "removable"))
   if (diff == "Easy") mode <- "direct"
+  
   if (mode == "direct") {
     m <- rint(-5, 5); if (m == 0) m <- 2
     b <- rint(-8, 8)
@@ -198,8 +199,12 @@ make_limits_mission <- function(diff) {
     hint <- "Linear is continuous: substitute x0."
     return(list(prompt = prompt, answer = ans, hint = hint, type = "numeric"))
   } else {
+    # (x^2 - a^2)/(x - a) -> x + a -> 2a as x -> a
     a <- rint(-5, 5); if (a == 0) a <- 2
-    prompt <- sprintf("Compute lim_{x->%d} (x^2 %s %dx + %d)/(x %s %d).", a, if (-2*a >= 0) "+" else "-", abs(2*a), a^2, if (-a >= 0) "+" else "-", abs(a))
+    prompt <- sprintf("Compute lim_{x->%d} (x^2 %s %d)/(x %s %d).",
+                      a,
+                      if ((-a^2) >= 0) "+" else "-", abs(-a^2),
+                      if ((-a) >= 0) "+" else "-", abs(-a))
     ans <- 2 * a
     hint <- "Factor numerator as (x-a)(x+a); cancel (x-a), then substitute."
     return(list(prompt = prompt, answer = ans, hint = hint, type = "numeric"))
@@ -239,23 +244,22 @@ ui <- page_fluid(
   theme = theme,
   tags$head(tags$style(HTML("
     .xp-bar{height:20px;border-radius:10px;background:#222;}
-    .xp-fill{height:100%;border-radius:10px;}
-    .badge{font-size:0.85rem}
-    .card{border-radius:1rem}
-    .hint{opacity:0.9}
+    .xp-fill{height:100%;border-radius:10px;background:linear-gradient(90deg,#00d4ff,#00ff88);}
+    .badge{font-size:0.85rem;}
+    .card{border-radius:1rem;border:1px solid #444;box-shadow:0 0 10px rgba(0,0,0,0.5);}
+    .hint{opacity:0.9;}
     .gm{font-family: 'Rubik', sans-serif;}
-    .boss{border:2px dashed #888;border-radius:14px;padding:12px}
-    .streak{font-weight:600}
-    .qprompt{font-size:1.15rem}
-    .xpnum{font-weight:700}
-    .loot{font-size:0.95rem}
-    .muted{opacity:0.85}
-    .code{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas}
-    .btn-lg{border-radius:0.8rem}
+    .boss{border:2px dashed #888;border-radius:14px;padding:12px;}
+    .streak{font-weight:600;}
+    .qprompt{font-size:1.15rem;}
+    .xpnum{font-weight:700;}
+    .loot{font-size:0.95rem;}
+    .muted{opacity:0.85;}
+    .code{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas;}
+    .btn-lg{border-radius:0.8rem;}
     .pill{border-radius:999px;}
     .alert{min-height:50px;padding:10px;margin-top:10px;border:1px solid #444;border-radius:8px;z-index:1000;}
   "))),
-  
   layout_sidebar(
     sidebar = sidebar(
       width = 340,
@@ -334,7 +338,8 @@ server <- function(input, output, session) {
     last_correct = NA,
     boss_ready = FALSE,
     boss_nodes = NULL,
-    boss_state = NULL
+    boss_state = NULL,
+    boss_feedback = NULL
   )
   
   observe({
@@ -346,7 +351,7 @@ server <- function(input, output, session) {
     meta <- xp_to_next(rv$xp)
     pct <- round(100 * meta$progress)
     div(class = "xp-bar",
-        div(class = "xp-fill", style = sprintf("width:%d%%;background:linear-gradient(90deg,#00d4ff,#00ff88);", max(2, pct))),
+        div(class = "xp-fill", style = sprintf("width:%d%%;", max(2, pct))),
         div(class = "d-flex justify-content-between mt-1",
             span(sprintf("XP: %d", rv$xp), class = "xpnum"),
             span(sprintf("To L%d: %d", meta$current_lvl + 1, max(0, meta$next_threshold - rv$xp)))
@@ -395,7 +400,7 @@ server <- function(input, output, session) {
   })
   
   output$feedback <- renderUI({
-    req(rv$feedback) # Only render if feedback exists
+    req(rv$feedback)
     cat("Rendering feedback\n")
     rv$feedback
   })
@@ -433,8 +438,7 @@ server <- function(input, output, session) {
       gained <- xp_award(input$difficulty, TRUE, rv$streak)
       rv$xp <- rv$xp + gained
       rv$missions_done_in_quest <- rv$missions_done_in_quest + 1
-      rv$feedback <- div(class = "alert alert-success",
-                         HTML(sprintf("✅ <b>Correct!</b> +%d XP (Streak x%d).", gained, rv$streak)))
+      rv$feedback <- div(class = "alert alert-success", HTML(sprintf("✅ <b>Correct!</b> +%d XP (Streak x%d).", gained, rv$streak)))
       rv$awaiting <- FALSE
       updateNumericInput(session, "ans_num", value = NA)
       updateTextInput(session, "ans_text", value = "")
@@ -446,8 +450,7 @@ server <- function(input, output, session) {
       }
     } else {
       rv$streak <- 0
-      rv$feedback <- div(class = "alert alert-danger",
-                         "❌ Not quite. Try again or press <b>Hint</b>/<b>Give Up</b>.")
+      rv$feedback <- div(class = "alert alert-danger", "❌ Not quite. Try again or press <b>Hint</b>/<b>Give Up</b>.")
       cat("Incorrect answer, streak reset\n")
     }
   })
@@ -498,7 +501,7 @@ server <- function(input, output, session) {
   })
   
   output$boss_feedback <- renderUI({
-    req(rv$boss_feedback) # Only render if feedback exists
+    req(rv$boss_feedback)
     cat("Rendering boss feedback\n")
     rv$boss_feedback
   })
@@ -534,6 +537,7 @@ server <- function(input, output, session) {
         rv$boss_state$step <- rv$boss_state$step + 1
         rv$boss_feedback <- div(class = "alert alert-success", "💥 Critical hit! Advance to the next step.")
         updateNumericInput(session, "boss_ans_num", value = NA)
+        # ---------- FIXED: clear the boss text input, not regular one ----------
         updateTextInput(session, "boss_ans_text", value = "")
         cat("Boss step advanced to", rv$boss_state$step, "\n")
       } else {
@@ -565,9 +569,11 @@ server <- function(input, output, session) {
     node <- rv$boss_nodes[[rv$boss_state$step]]
     rv$boss_feedback <- div(class = "alert alert-warning", HTML(sprintf("📘 Answer: <b>%s</b>", as.character(node$answer))))
     updateNumericInput(session, "boss_ans_num", value = NA)
+    # ---------- FIXED: clear the boss text input, not regular one ----------
     updateTextInput(session, "boss_ans_text", value = "")
   })
 }
 
 shinyApp(ui, server)
-```
+
+
